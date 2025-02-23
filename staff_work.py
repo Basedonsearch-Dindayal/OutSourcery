@@ -120,7 +120,7 @@ def staff_work(un):
     cal.pack()
     def date_ok():
       global end_date_flag
-      end_date.configure(text=f"{datetime.datetime.strptime(cal.get_date(), "%m/%d/%y").strftime("%Y-%m-%d")}")
+      end_date.configure(text=f"{datetime.datetime.strptime(cal.get_date(), '%m/%d/%y').strftime('%Y-%m-%d')}")
       end_date_flag=0
       cal_root.destroy()
     customtkinter.CTkButton(cal_root,text="ok",command=date_ok).pack()
