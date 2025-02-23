@@ -1,9 +1,4 @@
 import customtkinter
-import tkinter
-import datetime
-import csv
-import pandas as pd
-from PIL import ImageTk, Image
 import admin
 import staff_work
 from operations import Operations
@@ -15,13 +10,11 @@ def login():
   is_admin=is_super_admin.get()
   data=ops.login(un,pw,is_admin)
   if data and not is_admin:
-    print(data)
     login_page.destroy()
     staff_work.staff_work(un)
   elif data and is_admin:
-    print(data)
     login_page.destroy()
-    admin.admin()
+    admin.admin(un)
   else:
     login_label.configure(text="wrong credentials")
   
