@@ -1,7 +1,3 @@
-# om ganganpatay namah
-# om namah shivay
-# jai shri ram
-# 1o8 Dropse ADMIN balaji by RS Enterprises
 
 import customtkinter
 import tkinter
@@ -197,7 +193,7 @@ def admin(un):
   style.configure("Treeview.Heading", font=("Times New Roman", 20, "bold"),rowheight=40)  # Change heading font size
   
   top_frame = tkinter.Frame(root,bg="#333333")
-  top_frame.place(relwidth=1,height=50)
+  top_frame.place(relwidth=1,height=100)
   
   total_data_frame = customtkinter.CTkFrame(root)
   total_data_frame.place(relx=0,rely=0.12,relwidth=0.52,relheight=0.88)
@@ -226,7 +222,6 @@ def admin(un):
   emp_search= customtkinter.CTkEntry(top_frame, placeholder_text="emp username",width=250)
   emp_search.grid(row=0, column=2,padx=20, pady=10)
   customtkinter.CTkButton(top_frame,text="search",font=font,command=search_emp_detail).grid(row=0,column=3,padx=20, pady=10)
-  customtkinter.CTkLabel(top_frame,text="Jai Shri Ram",font=font).grid(row=0,column=4,padx=20,pady=10)
   
   # details
   customtkinter.CTkLabel(right_tabs.tab("Details"),text=f"Hi! {un}",font=font).grid(row=0,column=1)
