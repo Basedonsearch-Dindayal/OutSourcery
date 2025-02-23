@@ -1,16 +1,12 @@
 
+import tkinter.messagebox
 import customtkinter
 import tkinter
 from tkinter import ttk
 import datetime
-import csv
 import re
-import pandas as pd
 from tkcalendar import Calendar
 from operations import Operations
-import matplotlib.pyplot as plt
-import sqlite3
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 ops=Operations()
 
@@ -27,6 +23,8 @@ def staff_work(un):
       treev_today.delete(records)
     for records in treev_tomorrow.get_children():
       treev_tomorrow.delete(records)
+    for records in treev_freelancer.get_children():
+      treev_freelancer.delete(records)
   
   # data entry function
   def Submit():
@@ -89,7 +87,7 @@ def staff_work(un):
       "client_phone":client_phone,
       "client_email":client_email,
       "description":text,
-      "end_date":datetime.datetime.strptime(end, "%m/%d/%y").strftime("%Y/%m/%d"),
+      "end_date":datetime.datetime.strptime(end, "%m/%d/%y").strftime("%Y-%m-%d"),
       "commission":float(fees),
       "employee_id":un
       }
@@ -122,7 +120,7 @@ def staff_work(un):
     cal.pack()
     def date_ok():
       global end_date_flag
-      end_date.configure(text=f"{cal.get_date()}")
+      end_date.configure(text=f"{datetime.datetime.strptime(cal.get_date(), "%m/%d/%y").strftime("%Y-%m-%d")}")
       end_date_flag=0
       cal_root.destroy()
     customtkinter.CTkButton(cal_root,text="ok",command=date_ok).pack()
@@ -131,6 +129,9 @@ def staff_work(un):
   # displaying data
   def show_data():
     data = ops.get_all_projects_undone(un)
+    data_today=ops.get_all_projects_undone_today(un)
+    data_tomorrow=ops.get_all_projects_undone_tomorrow(un)
+    data_late=ops.get_all_projects_undone_late(un)
     try:
       clear()
     except:
@@ -146,56 +147,99 @@ def staff_work(un):
     treev_today["columns"] = columns
     for col in columns:  
       treev_today.heading(col, text=col, anchor="center")  # Set column heading
-    for row in data:  
+    for row in data_today:  
       treev_today.insert("", "end", values=row)
-    total_projects_label_today.configure(text=f"{len(data)}")
+    total_projects_label_today.configure(text=f"{len(data_today)}")
     
     treev_tomorrow["columns"] = columns
     for col in columns:  
       treev_tomorrow.heading(col, text=col, anchor="center")  # Set column heading
-    for row in data:  
+    for row in data_tomorrow:  
       treev_tomorrow.insert("", "end", values=row)
-    total_projects_label_tomorrow.configure(text=f"{len(data)}")
+    total_projects_label_tomorrow.configure(text=f"{len(data_tomorrow)}")
     
     treev_late["columns"] = columns
     for col in columns:  
       treev_late.heading(col, text=col, anchor="center")  # Set column heading
-    for row in data:  
+    for row in data_late:  
       treev_late.insert("", "end", values=row)
-    total_projects_label_late.configure(text=f"{len(data)}")
+    total_projects_label_late.configure(text=f"{len(data_late)}")
+     
+    columns_freelancer=['Freelancer id','Freelancer Name','Freelancer Phone','Freelancer Email','Project Assigned','Currently Available','Projects Completed']
+    treev_freelancer["columns"] = columns_freelancer
+    for col in columns_freelancer:  
+      treev_freelancer.heading(col, text=col, anchor="center")  # Set column heading
+    freelancers=ops.get_all_freelancers()
+    for row in freelancers:  
+      treev_freelancer.insert("", "end", values=row)
   
-  # deleting one Resource
-  def delete_one():
-    global data
-    ans=tkinter.messagebox.askyesno("Task done","Are you sure this task is done be sure",icon="warning")
-    if ans:
-      grabbed=treev_total_data.focus()#to get the data of the row selected
-      values=treev_total_data.item(grabbed,"values")
-      selection=treev_total_data.selection()#to get the selected the row
-      treev_total_data.delete(selection)
-      data.loc[(data["CLIENT NAME"]==values[0])&(data["CLIENT EMAIL"]==values[1])&(data["PROJECT"]==values[2])&((data["FEE"]==int(values[3])) | (data["FEE"]==float(values[3])))&(data["FREELANCER"]==values[4])&((data["COMMISSION"]==int(values[5]))|(data["COMMISSION"]==float(values[5])))&(data["FREELANCER EMAIL"]==values[6])&(data["START"]==values[7])&(data["END"]==values[8])&(data["EMP ID"]==values[9])&(data["STATUS"]==1),"STATUS"]=0
-      data.to_csv("data.csv",index=False)
-      data=pd.read_csv("data.csv")
-      show_data()
-      from_staff_emp_data=pd.read_csv("emp_dropse_data.csv")
-      from_staff_emp_data.loc[(from_staff_emp_data["USERNAME"]==empcode),"DONE"]+=1
-      from_staff_emp_data.to_csv("emp_dropse_data.csv",index=False)
     
   # deleting multiple
-  def delete_all():
-    global data
+  def delete():
     ans=tkinter.messagebox.askyesno("All task done","Are you sure that all these tasksare done",icon="warning")
     if ans:
-      data.loc[(data["EMP ID"]==empcode)&(data["STATUS"]==1),"STATUS"]=0
-      from_staff_emp_data=pd.read_csv("emp_dropse_data.csv")
-      from_staff_emp_data.loc[(from_staff_emp_data["USERNAME"]==empcode),"DONE"]+=len(treev_total_data.get_children())
-      from_staff_emp_data.to_csv("emp_dropse_data.csv",index=False)
-      for records in treev_total_data.get_children():
-        treev_total_data.delete(records)
-      data.to_csv("data.csv",index=False)
-      data=pd.read_csv("data.csv")
+      grabbed=treev_total_data.focus()
+      values=treev_total_data.item(grabbed,"values")
+      selection=treev_total_data.selection()
+      if values and values[-1]=='None':
+        tkinter.messagebox.showerror("Warning","Can't complete unassigned project")
+      elif values:
+        ops.update_project_status(values[0],1)
+        ops.update_completion_freelancer_emp_status(values[-1],values[-2])
+        treev_total_data.delete(selection)
+        tkinter.messagebox.showinfo("Project","project completed")
+      else:
+        tkinter.messagebox.showerror("Project","Select a project")
       show_data()
-  
+
+  # assign project
+  def Assign_project():
+    def assign():
+      freelancer_commission=freelance_comm.get().strip()
+      freelancer_id=freelance_id.get().strip()
+
+      grabbed=treev_total_data.focus()
+      values=treev_total_data.item(grabbed,"values")
+
+      freelancer_data=ops.get_freelancer_data(freelancer_id)
+      print(freelancer_data)
+
+      if freelancer_data[0][0]:
+        if values and values[-1]!='None':
+          ans=tkinter.messagebox.askyesno("Re-Assign Project",f"Would you like to re assign project from {values[-1]} to {freelancer_id} ",icon="warning")
+          if ans:
+            ops.assign_project(values[0],freelancer_id,float(freelancer_commission),values[0]+"---"+values[1])
+            ap_root.destroy()
+            tkinter.messagebox.showinfo("Project","Project Re-Assigned")
+          else:
+            ap_root.destroy()
+            tkinter.messagebox.showerror("Project","Project Not Assigned")
+        elif values:
+          ops.assign_project(values[0],freelancer_id,float(freelancer_commission),values[0]+"---"+values[1])
+          ap_root.destroy()
+          tkinter.messagebox.showinfo("Project","Project Assigned")
+        else:
+          ap_root.destroy()
+          tkinter.messagebox.showerror("Project","Select a Project")
+      else:
+        ap_root.destroy()
+        tkinter.messagebox.showerror("Project","Freelancer not available")
+      show_data()
+
+    
+    ap_root=customtkinter.CTk()
+    ap_root.title("Assign Project")
+    ap_root.geometry("280x200")
+    ap_root.configure(padx=10,pady=10)
+    ap_root.resizable(False,False)
+    ap_frame=customtkinter.CTkFrame(ap_root)
+    ap_frame.place(relheight=1,relwidth=1)
+    freelance_comm=customtkinter.CTkEntry(ap_frame,placeholder_text="freelancer commission",width=240)
+    freelance_comm.grid(row=0, column=0,padx=(5, 0), pady=(5, 5))
+    freelance_id=customtkinter.CTkEntry(ap_frame,placeholder_text="freelancer id",width=240)
+    freelance_id.grid(row=1, column=0,padx=(5, 0), pady=(5, 5))
+    customtkinter.CTkButton(ap_frame,text="Assign",font=font,command=assign).grid(row=2,column=0,padx=(5, 0), pady=(5, 5))
+
   # closing the window
   def confirm():
     ans=tkinter.messagebox.askyesno("exit","Are you sure you want to LOGOUT",icon="warning")
@@ -207,14 +251,12 @@ def staff_work(un):
     def change():
       old_password=old_pw.get()
       new_password=new_pw.get()
-      from_staff_emp_data=pd.read_csv("emp_dropse_data.csv")
-      pw_check_data=from_staff_emp_data.loc[(from_staff_emp_data["PASSWORD"]==old_password)&(from_staff_emp_data["USERNAME"]==empcode)]
-      if pw_check_data.empty:
+      pw_check_data=ops.check_password(un,old_password)
+      if not pw_check_data:
         tkinter.messagebox.showerror("Password not matched","old password not matched")
         old_pw.delete(0,"end")
       else:
-        from_staff_emp_data.loc[(from_staff_emp_data["PASSWORD"]==old_password)&(from_staff_emp_data["USERNAME"]==empcode),"PASSWORD"]=new_password
-        from_staff_emp_data.to_csv("emp_dropse_data.csv",index=False)
+        ops.change_password(un,new_password)
         pw_root.destroy()
         tkinter.messagebox.showinfo("changed","password changed")
     pw_root=customtkinter.CTk()
@@ -230,90 +272,59 @@ def staff_work(un):
     new_pw.grid(row=1, column=0,padx=(5, 0), pady=(5, 5))
     customtkinter.CTkButton(pw_frame,text="Change",font=font,command=change).grid(row=2,column=0,padx=(5, 0), pady=(5, 5))
   
+  # adding freelancer
+  def AddFreelancer():
+    freelancer_id=free_id.get().strip()
+    freelancer_name=free_name.get().strip()
+    freelancer_email=free_email.get().strip()
+    freelancer_phone=free_phone.get().strip()
+    ans=tkinter.messagebox.askyesno("Add Freelancer","Are you sure you want to add this freelancer\n Check the details carefully",icon="warning")
+    data123=[freelancer_name,freelancer_id,freelancer_email,freelancer_phone]
+    for i in data123:
+      if i=="" or i==" ":
+        free_submit_status.configure(text="error-fill all fields",font=font)
+        return
+      
+    data123=[freelancer_email]
+    pattern=r"^[\d a-z]?\w+[\.]?\w+@+\w+\.+\w+[\.]?\w+"
+    for i in data123:
+      if re.match(pattern,i):
+        pass
+      else:
+        free_submit_status.configure(text="error-emails",font=font)
+        return
+      
+    if(len(freelancer_phone)!=10):
+      free_submit_status.configure(text="error-phone",font=font)
+      return
+    
+    
+    for j in freelancer_phone:
+      if j in [str(a) for a in range(0,10)] or j in ["."]:
+        pass
+      else:
+        free_submit_status.configure(text="error-number field",font=font)
+        return
+      
+    freelancer_to_be_added={
+    "id":freelancer_id,
+    "name":freelancer_name,
+    "phone":freelancer_phone,
+    "email":freelancer_email
+    }
+    ops.insert_freelancer(freelancer_to_be_added)
+
+    widgets=[free_id,free_name,free_email,free_phone] 
+    for i in widgets:
+      i.delete(0,"end")
+    free_submit_status.configure(text="ADDED")
+    show_data()
+
+
   # analytics page
   def analytics():
-    # Connect to SQLite database
-    conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
-
-    # Fetch projects per employee
-    cursor.execute("SELECT employee_id, COUNT(*) FROM projects GROUP BY employee_id")
-    projects_per_employee = cursor.fetchall()
-
-    # Fetch project completion status
-    cursor.execute("SELECT status, COUNT(*) FROM projects GROUP BY status")
-    project_status = cursor.fetchall()
-
-    # Fetch earnings per project
-    cursor.execute("SELECT id, commission FROM projects")
-    earnings_per_project = cursor.fetchall()
-
-    # Fetch commission distribution (Total vs. Freelancer)
-    cursor.execute("SELECT id, commission, freelancer_commission FROM projects")
-    commission_distribution = cursor.fetchall()
-
-    conn.close()  # Close the database connection
-
-    # Create figure for multiple plots
-    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
-    fig.suptitle("Project Analytics", fontsize=14, fontweight="bold")
-    fig.tight_layout(pad=5.0)
-
-    ### 1️⃣ **Projects per Employee (Bar Chart)**
-    if projects_per_employee:
-        employee_ids = [str(row[0]) for row in projects_per_employee]
-        project_counts = [row[1] for row in projects_per_employee]
-        
-        axes[0, 0].bar(employee_ids, project_counts, color="blue")
-        axes[0, 0].set_title("Projects per Employee", fontsize=12)
-        axes[0, 0].set_xlabel("Employee ID")
-        axes[0, 0].set_ylabel("Number of Projects")
-        axes[0, 0].tick_params(axis="x", rotation=30)
-
-    ### 2️⃣ **Project Completion Status (Pie Chart)**
-    # if project_status:
-    #     labels = ["Completed", "Ongoing"]
-    #     counts = [row[1] for row in project_status]
-
-    #     axes[0, 1].pie(counts, labels=labels, autopct='%1.1f%%', colors=["green", "red"], startangle=140)
-    #     axes[0, 1].set_title("Project Completion Status", fontsize=12)
-
-    ### 3️⃣ **Earnings per Project (Bar Chart)**
-    if earnings_per_project:
-        project_ids = [str(row[0]) for row in earnings_per_project]
-        commissions = [row[1] for row in earnings_per_project]
-
-        axes[1, 0].bar(project_ids, commissions, color="purple")
-        axes[1, 0].set_title("Earnings per Project", fontsize=12)
-        axes[1, 0].set_xlabel("Project ID")
-        axes[1, 0].set_ylabel("Commission Earned")
-        axes[1, 0].tick_params(axis="x", rotation=30)
-
-    ### 4️⃣ **Employee vs. Freelancer Commission (Stacked Bar Chart)**
-    if commission_distribution:
-        project_ids = [str(row[0]) for row in commission_distribution]
-        total_commissions = [row[1] for row in commission_distribution]
-        freelancer_commissions = [row[2] if row[2] is not None else 0 for row in commission_distribution]
-        employee_commissions = [total - freelancer for total, freelancer in zip(total_commissions, freelancer_commissions)]
-
-        axes[1, 1].bar(project_ids, employee_commissions, label="Employee", color="blue")
-        axes[1, 1].bar(project_ids, freelancer_commissions, label="Freelancer", color="orange", bottom=employee_commissions)
-        axes[1, 1].set_title("Commission Distribution", fontsize=12)
-        axes[1, 1].set_xlabel("Project ID")
-        axes[1, 1].set_ylabel("Commission Amount")
-        axes[1, 1].legend()
-        axes[1, 1].tick_params(axis="x", rotation=30)
-
-    # Adjust layout
-    plt.tight_layout()
-
-    # Embed the figure in Tkinter
-    for widget in left_tabs.tab("Analytics").winfo_children():
-        widget.destroy()  # Clear previous graphs before adding a new one
-
-    canvas = FigureCanvasTkAgg(fig, master=left_tabs.tab("Analytics"))
-    canvas.draw()
-    canvas.get_tk_widget().grid(row=1, column=0, padx=20, pady=20)
+    ...
+  
   
   # making the root
   customtkinter.set_appearance_mode("Dark")  # Modes: "System" (standard), "Dark", "Light"
@@ -341,11 +352,38 @@ def staff_work(un):
   
   left_tabs.add("Total Data")
   left_tabs.add("Analytics")
+  left_tabs.add("Add Freelancer")
+
+
   
   total_data_frame = customtkinter.CTkFrame(left_tabs.tab("Total Data"))
   total_data_frame.place(relx=0,rely=0,relwidth=1,relheight=1)
   
   customtkinter.CTkButton(left_tabs.tab("Analytics"),command=analytics,text="Gain Analytics").grid(row=0,column=1)
+
+  # making the add freelancer tab
+
+  customtkinter.CTkLabel(left_tabs.tab("Add Freelancer"),text="freelancer id",font=font).grid(row=0,column=0)
+  free_id = customtkinter.CTkEntry(left_tabs.tab("Add Freelancer"), placeholder_text="freelancer id",width=240)
+  free_id.grid(row=0, column=1,padx=(5, 0), pady=(5, 5))
+  
+  customtkinter.CTkLabel(left_tabs.tab("Add Freelancer"),text="freelancer name",font=font).grid(row=1,column=0)
+  free_name = customtkinter.CTkEntry(left_tabs.tab("Add Freelancer"), placeholder_text="freelancer name",width=240)
+  free_name.grid(row=1, column=1,padx=(5, 0), pady=(5, 5))
+  
+  customtkinter.CTkLabel(left_tabs.tab("Add Freelancer"),text="freelancer email",font=font).grid(row=2,column=0)
+  free_email = customtkinter.CTkEntry(left_tabs.tab("Add Freelancer"), placeholder_text="freelancer email",width=240)
+  free_email.grid(row=2, column=1,padx=(5, 0), pady=(5, 5))
+  
+  customtkinter.CTkLabel(left_tabs.tab("Add Freelancer"),text="freelancer phone",font=font).grid(row=3,column=0)
+  free_phone = customtkinter.CTkEntry(left_tabs.tab("Add Freelancer"), placeholder_text="freelancer phone",width=240)
+  free_phone.grid(row=3, column=1,padx=(5, 0), pady=(5, 5))
+
+  customtkinter.CTkButton(left_tabs.tab("Add Freelancer"),command=AddFreelancer,text="Submit").grid(row=8,column=1)
+  free_submit_status=customtkinter.CTkLabel(left_tabs.tab("Add Freelancer"),text="",font=font)
+  free_submit_status.grid(row=4,column=1)
+
+  # making the right tabs
   
   right_tabs = customtkinter.CTkTabview(root)
   right_tabs.place(relx=0.53,rely=0.12,relwidth=0.47,relheight=0.88)
@@ -365,15 +403,18 @@ def staff_work(un):
   
   late_frame=customtkinter.CTkFrame(right_tabs.tab("Late"))# CAN BE making a tab scrollable
   late_frame.place(relheight=1,relwidth=1)
+
+  freelancer_frame=customtkinter.CTkFrame(right_tabs.tab("Freelancers"))# CAN BE making a tab scrollable
+  freelancer_frame.place(relheight=1,relwidth=1)
   # top frame
   top_frame.configure(padx=2,pady=2)
   customtkinter.CTkLabel(top_frame,text="OutSourcery",font=font).grid(row=0,column=0,padx=20, pady=0)
-  customtkinter.CTkButton(top_frame,text="Task completed",font=font,command=delete_one).grid(row=0,column=2,padx=20, pady=10)
-  customtkinter.CTkButton(top_frame,text="All Task completed",font=font,command=delete_all).grid(row=0,column=3,padx=20, pady=10)
-  customtkinter.CTkButton(top_frame,text="Important note",font=font,command=important_note).grid(row=0,column=4,padx=20, pady=10)
-  customtkinter.CTkButton(top_frame,text="Change password",font=font,command=change_pw).grid(row=0,column=5,padx=20, pady=10)
+  customtkinter.CTkButton(top_frame,text="Task completed",font=font,command=delete).grid(row=0,column=1,padx=20, pady=10)
+  customtkinter.CTkButton(top_frame,text="Important note",font=font,command=important_note).grid(row=0,column=2,padx=20, pady=10)
+  customtkinter.CTkButton(top_frame,text="Change password",font=font,command=change_pw).grid(row=0,column=3,padx=20, pady=10)
+  customtkinter.CTkButton(top_frame,text="Assign Project",font=font,command=Assign_project).grid(row=0,column=4,padx=20, pady=10)
   
-  #namaskar
+  #home
   customtkinter.CTkLabel(right_tabs.tab("Home"),text=empcode,font=font).grid(row=0,column=0,padx=20, pady=10)
   customtkinter.CTkLabel(right_tabs.tab("Home"),text="total projects pending",font=font).grid(row=1,column=0,padx=20, pady=10)
   customtkinter.CTkLabel(right_tabs.tab("Home"),text="total projects for today",font=font).grid(row=2,column=0,padx=20, pady=10)
@@ -467,6 +508,17 @@ def staff_work(un):
   treev_late.configure(xscrollcommand=treescrollx.set, yscrollcommand=treescrolly.set) # assign the scrollbars to the Treeview Widget
   treescrollx.pack(side="bottom", fill="x") # make the scrollbar fill the x axis of the Treeview widget
   treescrolly.pack(side="right", fill="y") # make the scrollbar fill the y axis of the Treeview widget
+
+  # freelancer_frame
+  treev_freelancer = tkinter.ttk.Treeview(freelancer_frame, selectmode ='browse')#extended helps to select multiple and none to none
+  treev_freelancer.place(relheight=1, relwidth=1)
+  
+  treescrolly = tkinter.Scrollbar(freelancer_frame, orient="vertical", command=treev_freelancer.yview) # command means update the yaxis view of the widget
+  treescrollx = tkinter.Scrollbar(freelancer_frame, orient="horizontal", command=treev_freelancer.xview) # command means update the xaxis view of the widget
+  treev_freelancer.configure(xscrollcommand=treescrollx.set, yscrollcommand=treescrolly.set) # assign the scrollbars to the Treeview Widget
+  treescrollx.pack(side="bottom", fill="x") # make the scrollbar fill the x axis of the Treeview widget
+  treescrolly.pack(side="right", fill="y") # make the scrollbar fill the y axis of the Treeview widget
+
   # styling the tree view
   style = tkinter.ttk.Style(root)
   style.configure("Treeview", background="#333333", fieldbackground="#333333", foreground="white")
@@ -479,4 +531,4 @@ def staff_work(un):
   root.mainloop()
 
 if __name__=="__main__":
-  staff_work('E001')
+  staff_work(un)

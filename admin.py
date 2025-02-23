@@ -5,26 +5,30 @@
 
 import customtkinter
 import tkinter
-import datetime
-import csv
+from tkinter import ttk
 import re
-import pandas as pd
+from operations import Operations
 
-def admin():  
+ops=Operations()
+
+def admin(un):  
   def delete_emp():
-    global emp_data
     grabbed=treev_total_data.focus()#to get the data of the row selected
     values=treev_total_data.item(grabbed,"values")
     
-    string=f"Are you sure you want to remove {values[3]} {values[0]}\n Doing this will remove all his details permanently"
-    ans=tkinter.messagebox.askyesno("Remove Employee",string,icon="warning")
-    if ans:
-      selection=treev_total_data.selection()#to get the selected the row
-      treev_total_data.delete(selection)
-      emp_data= emp_data.loc[emp_data["CID"]!=values[3]]
-      emp_data.to_csv("emp_dropse_data.csv",index=False)
-      emp_data=pd.read_csv("emp_dropse_data.csv")
-      employee_detail()
+    
+    if values:
+      string=f"Are you sure you want to remove {values[1]} {values[0]}\n Doing this will remove all his details permanently"
+      ans=tkinter.messagebox.askyesno("Remove Employee",string,icon="warning")
+      if ans:
+        selection=treev_total_data.selection()#to get the selected the row
+        treev_total_data.delete(selection)
+        ops.delete_emp(values[0])
+        employee_detail()
+        tkinter.messagebox.showinfo("Deleted","Employee Deleted")
+    else:
+      tkinter.messagebox.showinfo("Not Deleted","Select employee to delete")
+    
   
   # # clearing the trees for projects
   def clear_p():
@@ -73,123 +77,99 @@ def admin():
       else:
         submit_status.configure(text="error-phone no. len not 10")
         return
-      data=emp_data.loc[emp_data["CID"]==com_id_]
-      if not data.empty:
-        submit_status.configure(text="this cid exists")
-        return
-      data=emp_data.loc[emp_data["PHONE"]==int(phone_)]
-      if not data.empty:
-        submit_status.configure(text="this phone number exists")
-        return
-      data=[name_,email_,phone_,com_id_,password_,phone_+"@"+"dropse"+name_[1:5],datetime.datetime.now().strftime("%m/%d/%y"),0]
-      with open("emp_dropse_data.csv","a") as file:
-        datawriter=csv.writer(file)
-        datawriter.writerow(data)
+      
+      data_to_be_added={
+        "id":com_id_,
+        "name":name_,
+        "phone":phone_,
+        "email":email_,
+        "password":password_,
+      }
+      ops.insert_employee(data_to_be_added)
       #CLEANING THE ENTRY FIELDS
       widgets=[cname,cemail,ph,cid,pw]
       for i in widgets:
         i.delete(0,"end")
       # UPDATING THE LABEL
       submit_status.configure(text="ADDED")
-      emp_data=pd.read_csv("emp_dropse_data.csv")
       employee_detail()
     
   # # SHOWING employee detail
   def employee_detail():
-    global data_
     try:
       clear()
     except:
       None
-    data_=emp_data
-    treev_total_data["column"] = list(data_.columns)
-    treev_total_data["show"] = "headings"
+    data=ops.get_all_emp()
+    treev_total_data["column"] = ["ID","NAME","PHONE","EMAIL","PASSWORD","JOIN DATE","END DATE","PROJECT DONE"]
     for column in treev_total_data["columns"]:
         treev_total_data.heading(column, text=column) # let the column heading = column name
     
-    df_rows = data_.to_numpy().tolist() # turns the dataframe into a list of lists
-    for row in df_rows:
-        treev_total_data.insert("", 0, values=row)#index= 0 since beginning ,end for adding at the end
+    for row in data:
+        treev_total_data.insert("", 0, values=row) #index= 0 since beginning ,end for adding at the end
   
   # # work details
-  def work_detail():
+  def work_detail(isAll=True,id=None):
     try:
       clear_p()
     except:
       None
-    workdata_=work_data
+
+    workdetail_done=ops.get_all_projects_done(isAll,id)
+    workdetail_late=ops.get_all_projects_late(isAll,id)
+    workdetail_pending=ops.get_all_projects_pending(isAll,id)
+
+    columns=['Project id','Project','Client Name','Client Phone','Client Email','Description','Start Date','End Date','Commission','Freelancer Commission','Status','Employee id','Freelancer id']
+
   
-    # pending
-    
-    workdata_pending=workdata_.loc[workdata_["STATUS"]==1]
-    pending_data["column"] = list(workdata_pending.columns)
-    pending_data["show"] = "headings"
+    # pending 
+    pending_data["column"]=columns
     for column in pending_data["columns"]:
         pending_data.heading(column, text=column) # let the column heading = column name
-    
-    df_rows = workdata_pending.to_numpy().tolist() # turns the dataframe into a list of lists
-    for row in df_rows:
+    for row in workdetail_pending:
         pending_data.insert("", 0, values=row)#index= 0 since beginning ,end for adding at the end
     
     # done
-    
-    workdata_done=workdata_.loc[workdata_["STATUS"]==0]
-    done_data["column"] = list(workdata_done.columns)
-    done_data["show"] = "headings"
+    done_data["column"]=columns
     for column in done_data["columns"]:
         done_data.heading(column, text=column) # let the column heading = column name
-    
-    df_rows = workdata_done.to_numpy().tolist() # turns the dataframe into a list of lists
-    for row in df_rows:
+    for row in workdetail_done:
         done_data.insert("", 0, values=row)#index= 0 since beginning ,end for adding at the end
   
     # late_data
-    def strip(str_data):
-      list=str_data.split("/")
-      time=datetime.datetime(int(list[2]),int(list[0]),int(list[1])).strftime("%m/%d/%Y")
-      time=datetime.datetime.strptime(f"{time}","%m/%d/%Y")
-      return time
-      # it is done since directly doing was giving error that %r format is not defined
-    today=datetime.datetime.now().strftime("%m/%d/%Y")
-    today=datetime.datetime.strptime(f"{today}","%m/%d/%Y")
-    workdata_late = workdata_.loc[(workdata_["STATUS"] == 1) & (workdata_["END"].apply(strip) < today)]
-    late_data["column"]=list(workdata_late.columns)
-    late_data["show"]="headings"
+    late_data["column"]=columns
     for column in late_data["columns"]:
         late_data.heading(column, text=column) # let the column heading = column name
-    
-    df_rows = workdata_late.to_numpy().tolist() # turns the dataframe into a list of lists
-    for row in df_rows:
+    for row in workdetail_late:
         late_data.insert("", 0, values=row)#index= 0 since beginning ,end for adding at the end
     
     
     # updating total label
-    total_projects_pending_label.configure(text=f"{len(workdata_pending)}")
-    total_projects_done_label.configure(text=f"{len(workdata_done)}")
-    total_projects_late_label.configure(text=f"{len(workdata_late)}")
-  
-    # getting emp info
+    total_projects_pending_label.configure(text=f"{len(workdetail_pending)}")
+    total_projects_done_label.configure(text=f"{len(workdetail_done)}")
+    total_projects_late_label.configure(text=f"{len(workdetail_late)}")
+
+  def search_emp_detail():
     emp_search_tag=emp_search.get()
     if len(emp_search_tag)!=0:
-      workdata_pending_len=len(workdata_pending.loc[workdata_pending["EMP ID"]==emp_search_tag])
-      workdata_done_len=len(workdata_done.loc[workdata_done["EMP ID"]==emp_search_tag])
-      workdata_late_len=len(workdata_late.loc[workdata_late["EMP ID"]==emp_search_tag])
-      pending_label.configure(text=workdata_pending_len)
-      done_label.configure(text=workdata_done_len)
-      late_label.configure(text=workdata_late_len)
-      if not emp_data.loc[emp_data["USERNAME"]==emp_search_tag,"EMAIL"].empty:
-        email_label_tag=emp_data.loc[emp_data["USERNAME"]==emp_search_tag,"EMAIL"].values[0]#since index and datatype will also be printed if not done
-        email_label.configure(text=email_label_tag) 
+      work_detail(False,emp_search_tag)
+      emp_data=ops.get_emp_data(emp_search_tag)
+
+      if emp_data[0][3]:
+        email_label.configure(text=emp_data[0][3]) 
       else:
         email_label.configure(text="not exist") 
-      if not emp_data.loc[emp_data["USERNAME"]==emp_search_tag,"NAME"].empty:
-        name_label_tag=emp_data.loc[emp_data["USERNAME"]==emp_search_tag,"NAME"].values[0]#since index and datatype will also be printed if not done
-        name_label.configure(text=name_label_tag) 
+      if emp_data[0][1]:
+        name_label.configure(text=emp_data[0][1]) 
       else:
-        name_label.configure(text="not exist")#since values[0] will give error if the dataframe is of size 0         
+        name_label.configure(text="not exist")#since values[0] will give error if the dataframe is of size 0      
+
       username_label.configure(text=emp_search_tag)
     else:
-      pass
+      work_detail()
+      email_label.configure(text="--------") 
+      name_label.configure(text="--------")
+      username_label.configure(text="--------")
 
   # # closing window
   def confirm():
@@ -205,12 +185,16 @@ def admin():
   customtkinter.set_default_color_theme("blue")  # Themes: "blue" (standard), "green", "dark-blue"
   
   root=customtkinter.CTk()
-  root.title("1o8 Dropse ADMIN Balaji")
+  root.title("OutSourcery-Admin Panel")
   Width= root.winfo_screenwidth()#
   Height= root.winfo_screenheight()# both doe
   root.geometry("%dx%d" % (Width, Height))
   root.config(padx=10,pady=10)
-  font=("Times New Roman",15,"bold")
+  font=("Times New Roman",20,"bold")
+
+  style = ttk.Style()
+  style.configure("Treeview", font=("Times New Roman", 18),rowheight=40)  # Change font size
+  style.configure("Treeview.Heading", font=("Times New Roman", 20, "bold"),rowheight=40)  # Change heading font size
   
   top_frame = tkinter.Frame(root,bg="#333333")
   top_frame.place(relwidth=1,height=50)
@@ -237,16 +221,15 @@ def admin():
   # top_frame
   
   top_frame.configure(padx=2,pady=2)
-  customtkinter.CTkLabel(top_frame,text="RS Enterprises",font=font).grid(row=0,column=0,padx=20, pady=0)
-  customtkinter.CTkLabel(top_frame,text="1o8 Dropse",font=font).grid(row=0,column=1,padx=20, pady=10)
-  customtkinter.CTkButton(top_frame,text="Delete employee",font=font,command=delete_emp).grid(row=0,column=2,padx=20, pady=10)
+  customtkinter.CTkLabel(top_frame,text="OutSourcery",font=font).grid(row=0,column=0,padx=20, pady=0)
+  customtkinter.CTkButton(top_frame,text="Delete employee",font=font,command=delete_emp).grid(row=0,column=1,padx=20, pady=10)
   emp_search= customtkinter.CTkEntry(top_frame, placeholder_text="emp username",width=250)
-  emp_search.grid(row=0, column=3,padx=20, pady=10)
-  customtkinter.CTkButton(top_frame,text="search",font=font,command=work_detail).grid(row=0,column=4,padx=20, pady=10)
-  customtkinter.CTkLabel(top_frame,text="Jai Shri Ram",font=font).grid(row=0,column=5,padx=20,pady=10)
+  emp_search.grid(row=0, column=2,padx=20, pady=10)
+  customtkinter.CTkButton(top_frame,text="search",font=font,command=search_emp_detail).grid(row=0,column=3,padx=20, pady=10)
+  customtkinter.CTkLabel(top_frame,text="Jai Shri Ram",font=font).grid(row=0,column=4,padx=20,pady=10)
   
   # details
-  customtkinter.CTkLabel(right_tabs.tab("Details"),text="Hi! Balaji",font=font).grid(row=0,column=1)
+  customtkinter.CTkLabel(right_tabs.tab("Details"),text=f"Hi! {un}",font=font).grid(row=0,column=1)
   customtkinter.CTkLabel(right_tabs.tab("Details"),text="Total Projects Pending",font=font).grid(row=1,column=0)
   total_projects_pending_label=customtkinter.CTkLabel(right_tabs.tab("Details"),text="",font=font)
   total_projects_pending_label.grid(row=1,column=1)
@@ -266,15 +249,7 @@ def admin():
   customtkinter.CTkLabel(right_tabs.tab("Details"),text="name",font=font).grid(row=7,column=0)
   name_label=customtkinter.CTkLabel(right_tabs.tab("Details"),text="",font=font)
   name_label.grid(row=7,column=1)
-  customtkinter.CTkLabel(right_tabs.tab("Details"),text="projects done",font=font).grid(row=8,column=0)
-  done_label=customtkinter.CTkLabel(right_tabs.tab("Details"),text="",font=font)
-  done_label.grid(row=8,column=1)
-  customtkinter.CTkLabel(right_tabs.tab("Details"),text="projects pending",font=font).grid(row=9,column=0)
-  pending_label=customtkinter.CTkLabel(right_tabs.tab("Details"),text="",font=font)
-  pending_label.grid(row=9,column=1)
-  customtkinter.CTkLabel(right_tabs.tab("Details"),text="projects late",font=font).grid(row=10,column=0)
-  late_label=customtkinter.CTkLabel(right_tabs.tab("Details"),text="",font=font)
-  late_label.grid(row=10,column=1)
+  
   # adding the employee tab
   
   customtkinter.CTkLabel(right_tabs.tab("Add employee"),text="name",font=font).grid(row=0,column=0)
@@ -351,15 +326,12 @@ def admin():
   style.map('Treeview',background=[('selected',"red")])#to change the color of selected
   # 
   # 
-  global emp_data
-  emp_data=pd.read_csv("emp_dropse_data.csv")
-  employee_detail()
 
-  global work_data
-  work_data=pd.read_csv("data.csv")
+  employee_detail()
   work_detail()
+  # work_detail()
   root.protocol("WM_DELETE_WINDOW",confirm)
   root.mainloop()
 
 if __name__=="__main__":
-  admin()
+  admin(un)

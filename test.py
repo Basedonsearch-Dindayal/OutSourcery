@@ -1,56 +1,77 @@
-from operations import Operations
+import sqlite3
+from datetime import datetime, timedelta
 
-if __name__ == "__main__":
-    ops = Operations()
+# Connect to the existing SQLite3 database
+conn = sqlite3.connect("local.db")  # Replace with your actual DB file
+cursor = conn.cursor()
 
-    # # Insert employees
-    # employees = [
-    #     {"id": "E001", "name": "Alice Johnson", "phone": "1234567890", "email": "alice@example.com","password":"abc1"},
-    #     {"id": "E002", "name": "Bob Williams", "phone": "9876543210", "email": "bob@example.com","password":"abc2"},
-    #     {"id": "E003", "name": "Charlie Davis", "phone": "4561237890", "email": "charlie@example.com","password":"abc3"},
-    #     {"id": "E004", "name": "Daisy Parker", "phone": "8529637410", "email": "daisy@example.com","password":"abc4"},
-    #     {"id": "E005", "name": "Ethan Moore", "phone": "3692581470", "email": "ethan@example.com","password":"abc5"},
-    # ]
-    
-    # for emp in employees:
-    #     ops.insert_employee(emp)
-    # print("Employees inserted successfully!")
+# 🔹 Insert Employees (10 Records)
+employees = [
+    ("EMP001", "Alice Johnson", "123-456-7890", "alice@example.com", "pass123"),
+    ("EMP002", "Bob Smith", "234-567-8901", "bob@example.com", "pass123"),
+    ("EMP003", "Charlie Brown", "345-678-9012", "charlie@example.com", "pass123"),
+    ("EMP004", "David Wilson", "456-789-0123", "david@example.com", "pass123"),
+    ("EMP005", "Emma Davis", "567-890-1234", "emma@example.com", "pass123"),
+    ("EMP006", "Frank Thomas", "678-901-2345", "frank@example.com", "pass123"),
+    ("EMP007", "Grace Lee", "789-012-3456", "grace@example.com", "pass123"),
+    ("EMP008", "Henry Moore", "890-123-4567", "henry@example.com", "pass123"),
+    ("EMP009", "Isabel White", "901-234-5678", "isabel@example.com", "pass123"),
+    ("EMP010", "Jack Martin", "012-345-6789", "jack@example.com", "pass123"),
+]
 
-    # # Insert freelancers
-    # freelancers = [
-    #     {"id": "F001", "name": "Freelancer One", "phone": "7412589630", "email": "f1@example.com"},
-    #     {"id": "F002", "name": "Freelancer Two", "phone": "3698521470", "email": "f2@example.com"},
-    #     {"id": "F003", "name": "Freelancer Three", "phone": "1597534862", "email": "f3@example.com"},
-    #     {"id": "F004", "name": "Freelancer Four", "phone": "2589631470", "email": "f4@example.com"},
-    #     {"id": "F005", "name": "Freelancer Five", "phone": "3579514682", "email": "f5@example.com"},
-    # ]
-    
-    # for freelancer in freelancers:
-    #     ops.insert_freelancer(freelancer)
-    # print("Freelancers inserted successfully!")
+cursor.executemany("INSERT INTO employees (id, name, phone, email, password) VALUES (?, ?, ?, ?, ?)", employees)
+conn.commit()
 
-    # Insert projects
-    projects = [
-        {"id": "P0016", 
-         "name": "E-commerce Website", 
-         "client_name": "Charlie Brown", 
-         "client_phone": "1239874560", 
-         "client_email": "charlie@example.com", 
-         "description": "Developing an e-commerce platform", 
-         "end_date": "2025-05-10", 
-         "commission": 5000.00, 
-         "employee_id": "E001"},
-        
-        {"id": "P0017", "name": "CRM System", "client_name": "Sophia Johnson", "client_phone": "7896541230", "client_email": "sophia@example.com", "description": "Building a customer management system", "end_date": "2025-06-15", "commission": 7000.00, "employee_id": "E001"},
-        {"id": "P0018", "name": "Inventory App", "client_name": "Michael Scott", "client_phone": "9874563210", "client_email": "michael@example.com", "description": "Developing an inventory tracking app", "end_date": "2025-07-20", "commission": 6000.00, "employee_id": "E001"},
-        {"id": "P0019", "name": "Social Media Tool", "client_name": "Emma Watson", "client_phone": "3216549870", "client_email": "emma@example.com", "description": "A marketing automation tool", "end_date": "2025-08-01", "commission": 8000.00, "employee_id": "E001"},
-        {"id": "P0020", "name": "Blockchain Wallet", "client_name": "James Carter", "client_phone": "4569873210", "client_email": "james@example.com", "description": "A secure cryptocurrency wallet", "end_date": "2025-09-12", "commission": 9000.00, "employee_id": "E001"},
-    ]
-    
-    for project in projects:
-        ops.insert_project(project)
-    print("Projects inserted successfully!")
+# 🔹 Insert Freelancers (10 Records)
+freelancers = [
+    ("FR001", "Liam Walker", "111-222-3333", "liam@example.com"),
+    ("FR002", "Mia Clark", "222-333-4444", "mia@example.com"),
+    ("FR003", "Noah Scott", "333-444-5555", "noah@example.com"),
+    ("FR004", "Olivia Hall", "444-555-6666", "olivia@example.com"),
+    ("FR005", "Peter Adams", "555-666-7777", "peter@example.com"),
+    ("FR006", "Quinn Nelson", "666-777-8888", "quinn@example.com"),
+    ("FR007", "Rachel Carter", "777-888-9999", "rachel@example.com"),
+    ("FR008", "Samuel Green", "888-999-0000", "samuel@example.com"),
+    ("FR009", "Tina Harris", "999-000-1111", "tina@example.com"),
+    ("FR010", "Umar Brooks", "000-111-2222", "umar@example.com"),
+]
 
+cursor.executemany("INSERT INTO freelancers (id, name, phone, email) VALUES (?, ?, ?, ?)", freelancers)
+conn.commit()
 
-    # Close connection
-    ops.close_connection()
+# 🔹 Insert Projects (40 Total)
+project_statuses = {
+    "late": -5,        # 10 projects with past deadlines
+    "today": 0,        # 10 projects due today
+    "tomorrow": 1,     # 10 projects due tomorrow
+    "pending": 7       # 10 projects due in future (pending)
+}
+
+projects = []
+project_id = 1
+
+for status, days_offset in project_statuses.items():
+    for i in range(10):
+        proj_name = f"Project {status.capitalize()} {i+1}"
+        client_name = f"Client {i+1}"
+        client_phone = f"555-000-{1000+i}"
+        client_email = f"client{i+1}@example.com"
+        description = f"This is a {status} project description."
+        end_date = (datetime.now() + timedelta(days=days_offset)).strftime("%Y-%m-%d")  # Ensures YYYY-MM-DD format
+        commission = 1000 + (i * 100)
+        employee_id = employees[i % len(employees)][0]  # Assign employees in round-robin fashion
+        status_flag = 0  # All projects start as pending (status = 0)
+
+        projects.append((f"PROJ{project_id:03d}", proj_name, client_name, client_phone, client_email, description, end_date, commission, employee_id, status_flag))
+        project_id += 1
+
+cursor.executemany(
+    "INSERT INTO projects (id, name, client_name, client_phone, client_email, description, end_date, commission, employee_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    projects
+)
+conn.commit()
+
+print("✅ Hardcoded data inserted successfully!")
+
+# Close the database connection
+conn.close()
