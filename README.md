@@ -16,7 +16,7 @@ The Admin Panel gives business owners complete control over employees and projec
 The Employee Panel is designed for efficient work management:
 
 ✅ **Outsourced Firm Management** – Add and manage firms handling outsourced work.  
-✅ **Project Assignment** – Assign projects to available outsourced firms.  
+✅ **Project Assignment** – Assign projects to the available outsourced firms.  
 ✅ **Task & Deadline Management** – View projects categorized under:
 - **Late** – Past deadline projects
 - **Pending** – Upcoming projects
