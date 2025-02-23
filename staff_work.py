@@ -227,7 +227,7 @@ def staff_work(un):
       show_data()
 
     
-    ap_root=customtkinter.CTk()
+    ap_root=customtkinter.CTkToplevel()
     ap_root.title("Assign Project")
     ap_root.geometry("280x200")
     ap_root.configure(padx=10,pady=10)
@@ -259,7 +259,7 @@ def staff_work(un):
         ops.change_password(un,new_password)
         pw_root.destroy()
         tkinter.messagebox.showinfo("changed","password changed")
-    pw_root=customtkinter.CTk()
+    pw_root=customtkinter.CTkToplevel()
     pw_root.title("change password")
     pw_root.geometry("280x200")
     pw_root.configure(padx=10,pady=10)
